@@ -20,10 +20,10 @@ class _TodoListState extends State<TodoList> {
       key: const Key('todoListScaffold'),
       appBar: AppBar(
         title: const Text(
-          'Todo List\nMade by Sanan Baig',
+          'Add Tasks to Your List',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 14.0,
+            fontSize: 18.0,
           ),
           textAlign: TextAlign.center,
         ),
