@@ -1,7 +1,7 @@
 # todo_list_app
 # created by Sanan Baig 20K-0165
 
-A new Flutter project.
+A simple todo list application which is connected to firebase for authentication and task storage
 
 ## Getting Started
 
