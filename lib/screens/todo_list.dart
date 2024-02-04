@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class TodoList extends StatefulWidget {
@@ -27,6 +28,15 @@ class _TodoListState extends State<TodoList> {
           textAlign: TextAlign.center,
         ),
         backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              // Call the logout function when the button is pressed
+              await _logout();
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -93,6 +103,17 @@ class _TodoListState extends State<TodoList> {
     setState(() {
       todos.removeAt(index);
     });
+  }
+
+  Future<void> _logout() async {
+    try {
+      // Sign out the user from Firebase Auth
+      await FirebaseAuth.instance.signOut();
+      // Optionally, you can navigate to the login screen or perform other tasks
+      // after successfully logging out the user.
+    } catch (e) {
+      print("Error during logout: $e");
+    }
   }
 }
 
