@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class TodoList extends StatefulWidget {
@@ -9,10 +10,81 @@ class TodoList extends StatefulWidget {
 }
 
 class _TodoListState extends State<TodoList> {
-  List<String> todos = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  late CollectionReference _todoCollection;
+
+  List<TodoModel> todos = [];
   final TextEditingController _textEditingController = TextEditingController();
   int _editingIndex = -1;
   final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _todoCollection = _firestore.collection('todos');
+    _loadTodos();
+  }
+
+  Future<void> _loadTodos() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      try {
+        final snapshot =
+            await _todoCollection.where('userId', isEqualTo: user.uid).get();
+        setState(() {
+          todos = snapshot.docs
+              .map((doc) => TodoModel.fromMap({
+                    'id': doc.id,
+                    'task': doc['task'],
+                  }))
+              .toList();
+        });
+      } catch (e) {
+        print('Error loading todos: $e');
+      }
+    }
+  }
+
+  Future<void> _handleTodoAction(String todo) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      try {
+        if (_editingIndex == -1) {
+          // Add new task
+          await _todoCollection.add({
+            'task': todo,
+            'userId': user.uid,
+          });
+        } else {
+          // Update existing task
+          await _todoCollection
+              .doc(todos[_editingIndex].id)
+              .update({'task': todo});
+          setState(() {
+            _editingIndex = -1;
+          });
+        }
+        _textEditingController.clear();
+        await _loadTodos();
+      } catch (e) {
+        print('Error handling todo action: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteTodo(int index) async {
+    final user = _auth.currentUser;
+    if (user != null && index >= 0 && index < todos.length) {
+      try {
+        await _todoCollection.doc(todos[index].id).delete();
+        await _loadTodos();
+      } catch (e) {
+        print('Error deleting todo: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +103,7 @@ class _TodoListState extends State<TodoList> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            color: Colors.white,
             onPressed: () async {
               // Call the logout function when the button is pressed
               await _logout();
@@ -49,7 +122,7 @@ class _TodoListState extends State<TodoList> {
               ),
               itemBuilder: (context, index) {
                 return TodoItem(
-                  todo: todos[index],
+                  todo: todos[index].task,
                   onEdit: () {
                     _startEditing(index);
                   },
@@ -80,28 +153,10 @@ class _TodoListState extends State<TodoList> {
     );
   }
 
-  void _handleTodoAction(String todo) {
-    setState(() {
-      if (_editingIndex == -1) {
-        todos.add(todo);
-      } else {
-        todos[_editingIndex] = todo;
-        _editingIndex = -1;
-      }
-      _textEditingController.clear();
-    });
-  }
-
   void _startEditing(int index) {
     setState(() {
-      _textEditingController.text = todos[index];
+      _textEditingController.text = todos[index].task;
       _editingIndex = index;
-    });
-  }
-
-  void _deleteTodo(int index) {
-    setState(() {
-      todos.removeAt(index);
     });
   }
 
@@ -114,6 +169,17 @@ class _TodoListState extends State<TodoList> {
     } catch (e) {
       print("Error during logout: $e");
     }
+  }
+}
+
+class TodoModel {
+  final String id;
+  final String task;
+
+  TodoModel({required this.id, required this.task});
+
+  factory TodoModel.fromMap(Map<String, dynamic> data) {
+    return TodoModel(id: data['id'], task: data['task']);
   }
 }
 
